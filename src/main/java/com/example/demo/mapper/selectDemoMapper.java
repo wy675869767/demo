@@ -16,4 +16,6 @@ import java.util.Map;
 public interface selectDemoMapper {
 
     public List selectByGuangNei();
+
+
 }

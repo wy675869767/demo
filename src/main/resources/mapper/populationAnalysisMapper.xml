@@ -1,0 +1,202 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.example.demo.mapper.populationAnalysisMapper">
+
+    <select id="getSexInfo" parameterType="map" resultType="java.util.HashMap">
+SELECT
+	t22. NAME,
+	ROUND(t22. VALUE / t111.totil * 100, 2) 'value'
+FROM
+	(
+		SELECT
+			t1.sex AS 'name',
+			COUNT(t1.sex) AS 'value'
+		FROM
+			(
+				SELECT
+					NAME,
+					sex
+				FROM
+					population_info,
+					code_sex,
+					residential_info
+				WHERE
+					1 = 1
+				AND population_info.sex_id = code_sex.sex_id
+				AND residential_info.id = population_info.id
+				AND residential_info.community_id =#{communityId}
+			) AS t1
+		GROUP BY
+			t1.sex
+	) AS t22,
+	(
+		SELECT
+			SUM(t11. VALUE) totil
+		FROM
+			(
+				SELECT
+					t1.sex AS 'name',
+					COUNT(t1.sex) AS 'value'
+				FROM
+					(
+						SELECT
+							NAME,
+							sex
+						FROM
+							population_info,
+							code_sex,
+							residential_info
+						WHERE
+							1 = 1
+						AND population_info.sex_id = code_sex.sex_id
+						AND residential_info.id = population_info.id
+						AND residential_info.community_id = #{communityId}
+					) AS t1
+				GROUP BY
+					t1.sex
+			) AS t11
+	) AS t111
+    </select>
+    <select id="getNationInfo1"   resultType="java.util.HashMap">
+SELECT COUNT(cn.nation_id) AS 'value',cn.nation_name AS'name'
+FROM population_info pi,code_nation cn
+WHERE pi.nation_id=cn.nation_id AND cn.nation_id=1  OR cn.nation_id=97
+GROUP BY cn.nation_name
+    union
+SELECT COUNT(cn.nation_id),cn.nation_name
+FROM population_info pi,code_nation cn
+WHERE pi.nation_id=cn.nation_id AND cn.nation_id=98
+GROUP BY cn.nation_name
+    </select>
+    <select id="getNationInfo3" resultType="java.util.HashMap">
+SELECT SUM(aa) AS 'value'   FROM
+(
+SELECT COUNT(cn.nation_id) AS aa ,cn.nation_name AS 'name'
+FROM population_info pi,code_nation cn
+WHERE pi.nation_id=cn.nation_id AND cn.nation_id!=97 AND cn.nation_id!=98 AND cn.nation_id!=1
+GROUP BY cn.nation_name
+) as t11
+
+    </select>
+    <select id="getMinNationInfo" resultType="java.util.HashMap">
+        SELECT t11.nation_name as 'name',COUNT(t11.nation_name) as 'value'FROM
+(SELECT pi.id,pi.name,cn.nation_id,cn.nation_name
+FROM population_info pi,code_nation cn
+WHERE pi.nation_id=cn.nation_id) as t11
+GROUP BY t11.nation_name
+    </select>
+    <select id="getCommunityPopuInfo" resultType="map">
+        SELECT t1.`每个社区名字` as 'name',t1.`每个社区人数` as 'value',(ROUND(t1.`每个社区人数`/t33.社区总人数*100,2))  as 'percentage' from
+(SELECT cc.community_name 每个社区名字,pc.num 每个社区人数
+FROM population_community pc,code_community cc
+WHERE pc.community_id=cc.community_id
+GROUP BY cc.community_name) as t1,
+(SELECT SUM(t3.每个社区人数) 社区总人数 FROM
+(
+SELECT cc.community_name 社区名字,pc.num 每个社区人数
+FROM population_community pc,code_community cc
+WHERE pc.community_id=cc.community_id
+
+GROUP BY 社区名字) AS t3)as t33
+    </select>
+    <select id="getTotalPopulation" resultType="int">
+        SELECT SUM(t3.每个社区人数) 社区总人数 FROM
+(
+SELECT cc.community_name 社区名字,pc.num 每个社区人数
+FROM population_community pc,code_community cc
+WHERE pc.community_id=cc.community_id
+
+GROUP BY 社区名字) AS t3
+    </select>
+    <select id="getAgeInfo" parameterType="map" resultType="map">
+SELECT COUNT(id) AS 'value' ,nianling AS 'age' FROM
+(SELECT p1.id AS num,ROUND(DATEDIFF(CURDATE(), p1.birth)/365.2422) AS nianling
+FROM population_info p1) AS t11,residential_info
+WHERE t11.num=residential_info.id AND residential_info.community_id=#{communityid}
+GROUP BY nianling
+
+    </select>
+<select id="getAgeStructureInfo" parameterType="map" resultType="map">
+
+  SELECT
+	t33.age,
+	ROUND(
+		t11.manCount / t33.totalpeople,
+		2
+	) AS man,
+	ROUND(
+		t22.womanCount / t33.totalpeople,
+		2
+	) AS woman
+FROM
+	(
+		SELECT
+			COUNT(population_info.id) AS manCount,
+			ROUND(
+				DATEDIFF(
+					CURDATE(),
+					population_info.birth
+				) / 365.2422
+			) AS age
+		FROM
+			population_info,
+			residential_info
+		WHERE
+			population_info.id = residential_info.id
+		AND residential_info.community_id =#{AgeStructure}
+		AND population_info.sex_id = 1
+		GROUP BY
+			age
+		HAVING
+			age BETWEEN 0
+		AND 115
+	) AS t11,
+	(
+		SELECT
+			COUNT(population_info.id) AS womanCount,
+			ROUND(
+				DATEDIFF(
+					CURDATE(),
+					population_info.birth
+				) / 365.2422
+			) AS age
+		FROM
+			population_info,
+			residential_info
+		WHERE
+			population_info.id = residential_info.id
+		AND residential_info.community_id =#{AgeStructure}
+		AND population_info.sex_id = 2
+		GROUP BY
+			age
+		HAVING
+			age BETWEEN 0
+		AND 115
+	) AS t22,
+	(
+		SELECT
+			COUNT(population_info.id) AS totalpeople,
+			ROUND(
+				DATEDIFF(
+					CURDATE(),
+					population_info.birth
+				) / 365.2422
+			) AS age
+		FROM
+			population_info,
+			residential_info
+		WHERE
+			population_info.id = residential_info.id
+		AND residential_info.community_id = 110102025012
+		GROUP BY
+			age
+		HAVING
+			age BETWEEN 0
+		AND 115
+	) AS t33
+WHERE
+	t22.age = t33.age
+AND t11.age = t33.age
+
+</select>
+</mapper>
